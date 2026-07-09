@@ -61,6 +61,8 @@ type Store = {
   gripStrength: number
   dropChance: number
   selectedTypeId: string
+  showCelebration: boolean
+  roundsPlayed: number
 
   setMode: (mode: Mode) => void
   setClawPhase: (phase: ClawPhase) => void
@@ -74,6 +76,8 @@ type Store = {
   setDrop: (value: number) => void
   setSelectedTypeId: (typeId: string) => void
   clearWonThisRound: () => void
+  dismissCelebration: () => void
+  retryChallenge: () => void
 }
 
 export const useStore = create<Store>()((set) => ({
@@ -87,12 +91,14 @@ export const useStore = create<Store>()((set) => ({
   gripStrength: GAME.gripStrength,
   dropChance: GAME.dropChance,
   selectedTypeId: 'bear',
+  showCelebration: false,
+  roundsPlayed: 0,
 
   // 클로가 정지(IDLE)해 있을 때만 모드 전환 허용 — 운반 중(조인트 부착) 전환 시
   // 운영자 기능(비우기 등)이 살아있는 조인트의 바디를 지워 rapier가 크래시할 수 있음
   setMode: (mode) => set((s) => (s.clawPhase === 'IDLE' ? { mode } : {})),
   setClawPhase: (clawPhase) => set({ clawPhase }),
-  spendCredit: () => set((s) => ({ credits: Math.max(0, s.credits - 1) })),
+  spendCredit: () => set((s) => ({ credits: Math.max(0, s.credits - 1), roundsPlayed: s.roundsPlayed + 1 })),
   refillCredits: (amount = GAME.startCredits) => set((s) => ({ credits: s.credits + amount })),
 
   registerWin: (uid) =>
@@ -107,11 +113,13 @@ export const useStore = create<Store>()((set) => ({
       } catch {
         // localStorage 사용 불가 환경 — 조용히 무시
       }
+      const plushies = s.plushies.filter((p) => p.uid !== uid)
       return {
-        plushies: s.plushies.filter((p) => p.uid !== uid),
+        plushies,
         score,
         best,
         wonThisRound: { typeId: type.id, label: type.label, score: type.score },
+        showCelebration: plushies.length === 0,
       }
     }),
 
@@ -122,6 +130,14 @@ export const useStore = create<Store>()((set) => ({
   setDrop: (dropChance) => set({ dropChance }),
   setSelectedTypeId: (selectedTypeId) => set({ selectedTypeId }),
   clearWonThisRound: () => set({ wonThisRound: null }),
+  dismissCelebration: () => set({ showCelebration: false }),
+  retryChallenge: () =>
+    set(() => ({
+      score: 0,
+      roundsPlayed: 0,
+      showCelebration: false,
+      plushies: randomInstances(Math.random, PRIZES.count).map((inst) => ({ ...inst, uid: nextUid() })),
+    })),
 }))
 
 // 개발 중 브라우저 콘솔/자동화에서 상태 확인·튜닝용 (프로덕션 빌드에서는 제외됨)

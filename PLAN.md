@@ -210,3 +210,79 @@ export function stepClaw(sim: ClawSim, input: ClawInput, dt: number, cfg: ClawCf
 - 각 Phase: `npm test` → `npm run build` → `npm run dev`(백그라운드) 후 **사용자에게 해당 Phase의 SPEC `[C]` 항목 육안 확인을 요청** (Sonnet은 브라우저를 볼 수 없음 — 물리 거동 판정은 사용자 몫임을 매번 명시)
 - 문제 발생 시 `config.ts`의 `DEBUG_PHYSICS = true`로 콜라이더 시각화 후 진단
 - 최종: 사용자 풀 플레이스루 (이동→잡기→성공/실패→배출구→점수/최고기록→운영자 배치→저장/복원)
+
+---
+
+## §11. 다음 작업 지시서 (2026-07-09 구현 완료)
+
+**절대 규칙(§1)은 그대로 적용.** 아래 두 항목은 서로 독립적이라 순서 무관하게 진행 가능.
+
+### A. 디버그 패널을 운영자 모드에서만 표시
+
+**현황**: `src/ui/Hud.tsx` 90행 근처, `<DebugPanel />`가 mode와 무관하게 항상 렌더링됨 (현재 파일 기준 88~90행: `{mode === 'operator' && <OperatorPanel />}` 다음 줄에 무조건 `<DebugPanel />`).
+
+**수정**: `<DebugPanel />`를 `{mode === 'operator' && <DebugPanel />}`로 감싸기만 하면 됨. **파일 1개, 1줄.** 위험 없음(순수 조건 렌더링, DebugPanel 자체 로직 무변경).
+
+**DoD**: 플레이 모드에서는 우측 상단 디버그 슬라이더가 안 보이고, 운영자 모드로 전환하면 나타난다.
+
+### B. 인형을 모두 뽑으면 축하 애니메이션 (2026-07-XX, 레퍼런스 확정)
+
+**레퍼런스**: `C:\Users\admin\Downloads\plushie_celebration_overlay.html` (사용자 제작 목업). 핵심 구조: 반투명 검정 배경(뒤로 인형뽑기 기계가 은은히 보임) 위에 색종이(confetti) 애니메이션 + 중앙 카드(트로피 아이콘·제목·부제·칭호 뱃지·통계 2개·버튼). **레퍼런스의 "결과 공유하기" 버튼은 제외**하고 "다시 도전하기" 버튼만 사용. 아이콘 폰트(`ti-trophy`, `ti-crown`)는 라이선스 리스크 제로 원칙상 이모지(🏆/👑)로 대체.
+
+**현황**: `src/store.ts`의 `registerWin(uid)`(98~116행)가 승리 시 `plushies`에서 해당 인형을 제거하고 점수/최고기록을 갱신함. 인형이 0개가 됐는지 여부는 어디서도 확인하지 않음. 운영자 모드의 "비우기"(`OperatorPanel.tsx`, `setPlushies([])`)도 `plushies`를 0개로 만들 수 있는데, 이건 "다 뽑은" 것이 아니라 운영자가 수동으로 지운 것이므로 축하 애니메이션이 뜨면 안 됨 — **`registerWin` 내부에서만 감지해야 함**.
+
+**문구 세트** (사용자 제공, 그대로 사용 — 표시될 때마다 하나를 무작위로 골라 보여줌):
+```ts
+const CELEBRATION_SETS = [
+  { title: '인형이... 모두 사라졌다?!', subtitle: '당신은 이 기계를 정복했습니다', badge: '인형뽑기 지배자' },
+  { title: '기계가 텅 비었습니다', subtitle: '사장님도 몰랐던 고수의 등장', badge: '숨은 고수' },
+  { title: '인형: 저 이제 여기 없어요', subtitle: '집게 하나로 여기까지 오다니', badge: '집게의 신' },
+  { title: '완판! 매진! 클리어!', subtitle: '이 정도면 사장님이 울고 갈 실력', badge: '매장 최고 고객' },
+  { title: '인형들의 대탈출은 실패했다', subtitle: '전부 당신 손에 붙잡혔습니다', badge: '인형뽑기 마스터' },
+]
+```
+
+**설계**
+1. `src/store.ts`
+   - `Store` 타입에 필드 추가: `showCelebration: boolean`(초기 `false`), `roundsPlayed: number`(초기 `0`, "시도 횟수" 표시용)
+   - 액션 추가: `dismissCelebration: () => set({ showCelebration: false })`, `retryChallenge: () => void`
+   - `registerWin` 내부: 필터링된 새 `plushies` 배열이 `length === 0`이면 반환 객체에 `showCelebration: true` 포함
+   - `spendCredit`을 확장해 라운드 시작마다 `roundsPlayed`도 함께 증가시킴 (이미 `IDLE→MOVING` 전이 시 정확히 1회 호출되는 지점이라 `ClawStateMachine.tsx` 수정 없이 여기 한 곳만 고치면 됨):
+     ```ts
+     spendCredit: () => set((s) => ({ credits: Math.max(0, s.credits - 1), roundsPlayed: s.roundsPlayed + 1 })),
+     ```
+   - `retryChallenge`: 점수·시도횟수 리셋 + 인형 랜덤 재채움 + 오버레이 닫기 (이미 `initialPlushies()`에서 쓰는 `randomInstances`/`nextUid`/`PRIZES` 재사용, import 추가 불필요):
+     ```ts
+     retryChallenge: () =>
+       set(() => ({
+         score: 0,
+         roundsPlayed: 0,
+         showCelebration: false,
+         plushies: randomInstances(Math.random, PRIZES.count).map((inst) => ({ ...inst, uid: nextUid() })),
+       })),
+     ```
+     **주의**: `best`(최고기록)와 `credits`는 리셋하지 않음 — 사용자가 "점수와 인형"만 리셋해달라고 명시함.
+2. `src/ui/Celebration.tsx` (신규)
+   - `CELEBRATION_SETS`를 이 파일에 상수로 정의, 마운트 시 `useMemo(() => 랜덤 선택, [])`로 1개 고정(재렌더에도 안 바뀌게)
+   - 최상위: `position:fixed inset:0`, 배경 `rgba(0,0,0,0.55)`(반투명 — 뒤 3D 기계가 비쳐 보임), `pointerEvents:'auto'`, flex center. 이 배경 클릭 시 `onDismiss()`(닫기만, 리셋 없음 — 운영자가 직접 수습하고 싶을 때의 탈출구)
+   - 색종이 레이어: 배경 바로 위, `position:absolute inset:0 pointerEvents:'none'`, 40~45개 `<div>`를 `useMemo`로 생성(랜덤 left%/색상 5종/딜레이/지속시간/크기/회전), 카드보다 뒤(카드에 z-index 부여)
+   - 카드(`onClick`에 `e.stopPropagation()` — 배경 클릭 닫힘과 분리): 다크 테마에 맞춰 `#232342`류 배경, 반경 16px, 최대폭 340px, 중앙정렬
+     - 🏆 (40px 정도) → `{set.title}` → `{set.subtitle}` → 칭호 뱃지 "👑 칭호 획득: {set.badge}" (금색 pill, 기존 `refillButtonStyle`과 동일한 `#ffd166`/`#3a2a00` 배색 재사용)
+     - 통계 2칸(flex row): "시도 횟수 / {roundsPlayed}회", "최종 점수 / {score}" — `useStore`로 구독
+     - 버튼 1개만: "다시 도전하기" → `onRetry`(=store의 `retryChallenge`) 호출. **공유 버튼 없음**
+   - 자동 닫힘 타이머 없음 — 사용자가 버튼(또는 배경 클릭)으로 명시적으로 닫아야 함(레퍼런스에 타이머 없음)
+   - confetti `@keyframes`는 `index.html`의 기존 `<style>` 블록에 추가(이미 미디어쿼리 있는 곳과 동일 패턴): `@keyframes confetti-fall { to { transform: translateY(480px) rotate(720deg); opacity: 0; } }`
+3. `src/ui/Hud.tsx`
+   - `showCelebration`, `dismissCelebration`, `retryChallenge`를 store에서 구독
+   - 플레이 모드의 방향패드+하강버튼 행(`controlsRowStyle` 블록)은 `mode === 'play' && !showCelebration`으로 조건 강화(기계가 빈 상태에서 조작 UI가 겹쳐 보이지 않게)
+   - 맨 마지막에 `{showCelebration && <Celebration onRetry={retryChallenge} onDismiss={dismissCelebration} />}` 추가(다른 오버레이보다 위에 쌓이도록 렌더 순서상 마지막에 배치)
+4. `SPEC.md` R4.5/R4.6 갱신 (아래 참고, 이미 반영됨)
+
+**변경 범위**: 파일 4개(`store.ts`, `Hud.tsx`, `index.html`, 신규 `Celebration.tsx`) + `SPEC.md`. 위험 낮음 — 게임 로직·물리 무관, 순수 UI 오버레이. `ClawStateMachine.tsx`는 무변경(위 `spendCredit` 재사용 트릭 덕분).
+
+**검증**
+- `npm test`/`npm run build` 통과 확인
+- 브라우저: 운영자 모드에서 인형 1개만 남기고 플레이 모드로 전환 → gripStrength=1로 마지막 인형까지 뽑기 → 축하 오버레이 표시 확인(반투명 배경 뒤로 기계가 보이는지, 색종이가 떨어지는지, 문구/칭호/통계가 매번 다른 세트로 나오는지)
+- "다시 도전하기" 클릭 → 점수 0, 시도횟수 0, 인형 `PRIZES.count`개로 재채움, `best`/`credits`는 그대로인지 확인
+- 배경(카드 바깥) 클릭 시 리셋 없이 그냥 닫히는지 확인
+- 운영자 모드 "비우기" 클릭 시에는 축하 오버레이가 뜨지 않는지 확인(승리로 인한 소진만 트리거)

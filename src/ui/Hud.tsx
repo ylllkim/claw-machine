@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { controlsState, type ControlsState } from '../hooks/useControls'
 import { useStore, type ClawPhase } from '../store'
+import Celebration from './Celebration'
 import DebugPanel from './DebugPanel'
 import OperatorPanel from './OperatorPanel'
 
@@ -41,6 +42,9 @@ export default function Hud() {
   const refillCredits = useStore((s) => s.refillCredits)
   const mode = useStore((s) => s.mode)
   const setMode = useStore((s) => s.setMode)
+  const showCelebration = useStore((s) => s.showCelebration)
+  const dismissCelebration = useStore((s) => s.dismissCelebration)
+  const retryChallenge = useStore((s) => s.retryChallenge)
   const [showHelp, setShowHelp] = useState(false)
 
   const resultText = wonThisRound
@@ -87,7 +91,7 @@ export default function Hud() {
         </button>
       )}
 
-      {mode === 'play' && (
+      {mode === 'play' && !showCelebration && (
         <div style={controlsRowStyle}>
           <div style={dpadGridStyle}>
             <button {...bind('up')} style={{ ...dpadButtonStyle, gridColumn: 2, gridRow: 1 }}>
@@ -112,7 +116,9 @@ export default function Hud() {
 
       {mode === 'operator' && <OperatorPanel />}
 
-      <DebugPanel />
+      {mode === 'operator' && <DebugPanel />}
+
+      {showCelebration && <Celebration onRetry={retryChallenge} onDismiss={dismissCelebration} />}
     </div>
   )
 }
