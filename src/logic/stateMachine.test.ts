@@ -19,9 +19,13 @@ const cfg: ClawCfg = {
 }
 
 const DT = 0.05
-const NONE: ClawInput = { btnX: false, btnZ: false }
-const BTN_X: ClawInput = { btnX: true, btnZ: false }
-const BTN_Z: ClawInput = { btnX: false, btnZ: true }
+const NONE: ClawInput = { up: false, down: false, left: false, right: false, drop: false }
+const UP: ClawInput = { ...NONE, up: true }
+const DOWN: ClawInput = { ...NONE, down: true }
+const LEFT: ClawInput = { ...NONE, left: true }
+const RIGHT: ClawInput = { ...NONE, right: true }
+const DROP: ClawInput = { ...NONE, drop: true }
+const UP_RIGHT: ClawInput = { ...NONE, up: true, right: true }
 
 function run(sim: ClawSim, inputs: ClawInput[], useCfg: ClawCfg = cfg) {
   let s = sim
@@ -46,13 +50,12 @@ function collapse(phases: ClawPhase[]): ClawPhase[] {
 }
 
 describe('① 해피패스 전체 phase 순서', () => {
-  it('IDLE → MOVING_X → MOVING_Z → DROPPING → GRABBING → LIFTING → RETURNING → RELEASING → RESULT → IDLE', () => {
-    const inputs: ClawInput[] = [BTN_X, BTN_X, BTN_Z, BTN_Z, ...Array(60).fill(NONE)]
+  it('IDLE → MOVING → DROPPING → GRABBING → LIFTING → RETURNING → RELEASING → RESULT → IDLE', () => {
+    const inputs: ClawInput[] = [RIGHT, RIGHT, DROP, ...Array(60).fill(NONE)]
     const { phases } = run(initialSim(cfg), inputs)
     expect(collapse(phases)).toEqual([
       'IDLE',
-      'MOVING_X',
-      'MOVING_Z',
+      'MOVING',
       'DROPPING',
       'GRABBING',
       'LIFTING',
@@ -64,39 +67,74 @@ describe('① 해피패스 전체 phase 순서', () => {
   })
 })
 
-describe('② 경계 클램프', () => {
-  it('MOVING_X는 bounds.maxX를 넘지 않는다', () => {
-    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING_X', x: cfg.bounds.maxX - 0.01 }
-    for (let i = 0; i < 10; i++) {
-      sim = stepClaw(sim, BTN_X, DT, cfg).sim
+describe('② 방향키를 놓아도 하강하지 않는다 (③ 요구사항 회귀 방지)', () => {
+  it('MOVING 중 방향키를 전부 놓아도 DROPPING으로 넘어가지 않고 MOVING을 유지한다', () => {
+    let sim = stepClaw(initialSim(cfg), RIGHT, DT, cfg).sim
+    expect(sim.phase).toBe('MOVING')
+    for (let i = 0; i < 30; i++) {
+      sim = stepClaw(sim, NONE, DT, cfg).sim
     }
-    expect(sim.x).toBeLessThanOrEqual(cfg.bounds.maxX)
+    expect(sim.phase).toBe('MOVING')
   })
 
-  it('MOVING_Z는 bounds.minZ 아래로 내려가지 않는다', () => {
-    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING_Z', z: cfg.bounds.minZ + 0.01 }
-    for (let i = 0; i < 10; i++) {
-      sim = stepClaw(sim, BTN_Z, DT, cfg).sim
-    }
-    expect(sim.z).toBeGreaterThanOrEqual(cfg.bounds.minZ)
+  it('drop 입력이 들어와야만 DROPPING으로 전이한다', () => {
+    let sim = stepClaw(initialSim(cfg), RIGHT, DT, cfg).sim
+    sim = stepClaw(sim, NONE, DT, cfg).sim // 방향키 릴리스
+    expect(sim.phase).toBe('MOVING')
+    sim = stepClaw(sim, DROP, DT, cfg).sim
+    expect(sim.phase).toBe('DROPPING')
   })
 })
 
-describe('③ roundTimeLimit 자동 하강', () => {
-  it('버튼②를 누르지 않아도 시간 초과 시 DROPPING으로 전이한다', () => {
+describe('③ 동시 입력(대각선) 이동', () => {
+  it('up+right를 동시에 누르면 x/z가 같은 스텝에서 함께 이동한다', () => {
+    const sim = stepClaw({ ...initialSim(cfg), phase: 'MOVING' }, UP_RIGHT, DT, cfg).sim
+    expect(sim.x).toBeCloseTo(cfg.home[0] + cfg.speedX * DT)
+    expect(sim.z).toBeCloseTo(cfg.home[2] - cfg.speedZ * DT)
+  })
+})
+
+describe('④ 경계 클램프 (4방향 모두)', () => {
+  it('MOVING은 bounds.maxX를 넘지 않는다 (right)', () => {
+    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING', x: cfg.bounds.maxX - 0.01 }
+    for (let i = 0; i < 10; i++) sim = stepClaw(sim, RIGHT, DT, cfg).sim
+    expect(sim.x).toBeLessThanOrEqual(cfg.bounds.maxX)
+  })
+
+  it('MOVING은 bounds.minX 아래로 내려가지 않는다 (left)', () => {
+    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING', x: cfg.bounds.minX + 0.01 }
+    for (let i = 0; i < 10; i++) sim = stepClaw(sim, LEFT, DT, cfg).sim
+    expect(sim.x).toBeGreaterThanOrEqual(cfg.bounds.minX)
+  })
+
+  it('MOVING은 bounds.minZ 아래로 내려가지 않는다 (up)', () => {
+    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING', z: cfg.bounds.minZ + 0.01 }
+    for (let i = 0; i < 10; i++) sim = stepClaw(sim, UP, DT, cfg).sim
+    expect(sim.z).toBeGreaterThanOrEqual(cfg.bounds.minZ)
+  })
+
+  it('MOVING은 bounds.maxZ를 넘지 않는다 (down)', () => {
+    let sim: ClawSim = { ...initialSim(cfg), phase: 'MOVING', z: cfg.bounds.maxZ - 0.01 }
+    for (let i = 0; i < 10; i++) sim = stepClaw(sim, DOWN, DT, cfg).sim
+    expect(sim.z).toBeLessThanOrEqual(cfg.bounds.maxZ)
+  })
+})
+
+describe('⑤ roundTimeLimit 자동 하강', () => {
+  it('drop을 누르지 않아도 시간 초과 시 DROPPING으로 전이한다', () => {
     const shortCfg: ClawCfg = { ...cfg, roundTimeLimit: 0.2 }
-    let sim = stepClaw(initialSim(shortCfg), BTN_X, DT, shortCfg).sim
-    expect(sim.phase).toBe('MOVING_X')
-    for (let i = 0; i < 10 && sim.phase === 'MOVING_X'; i++) {
+    let sim = stepClaw(initialSim(shortCfg), RIGHT, DT, shortCfg).sim
+    expect(sim.phase).toBe('MOVING')
+    for (let i = 0; i < 10 && sim.phase === 'MOVING'; i++) {
       sim = stepClaw(sim, NONE, DT, shortCfg).sim
     }
     expect(sim.phase).toBe('DROPPING')
   })
 })
 
-describe('④ 이벤트는 라운드당 정확히 1회씩 방출된다', () => {
+describe('⑥ 이벤트는 라운드당 정확히 1회씩 방출된다', () => {
   it('GRAB_NOW / RELEASE_NOW / ROUND_END', () => {
-    const inputs: ClawInput[] = [BTN_X, BTN_X, BTN_Z, BTN_Z, ...Array(60).fill(NONE)]
+    const inputs: ClawInput[] = [RIGHT, RIGHT, DROP, ...Array(60).fill(NONE)]
     const { events } = run(initialSim(cfg), inputs)
     expect(events.filter((e) => e.type === 'GRAB_NOW')).toHaveLength(1)
     expect(events.filter((e) => e.type === 'RELEASE_NOW')).toHaveLength(1)
@@ -104,7 +142,7 @@ describe('④ 이벤트는 라운드당 정확히 1회씩 방출된다', () => {
   })
 })
 
-describe('⑤ MID_DROP', () => {
+describe('⑦ MID_DROP', () => {
   const bigCfg: ClawCfg = { ...cfg, topY: 1000 } // LIFTING이 테스트 도중 끝나지 않도록
 
   function liftingSim(midDropAt: number | null): ClawSim {
@@ -154,7 +192,7 @@ describe('⑤ MID_DROP', () => {
   })
 })
 
-describe('⑥ RESULT → IDLE 복귀 및 리셋', () => {
+describe('⑧ RESULT → IDLE 복귀 및 리셋', () => {
   it('resultTime 경과 후 IDLE로 돌아가고 라운드 상태가 초기화된다', () => {
     const resultSim: ClawSim = {
       ...initialSim(cfg),
@@ -162,7 +200,6 @@ describe('⑥ RESULT → IDLE 복귀 및 리셋', () => {
       phaseT: cfg.resultTime - 0.01,
       x: 3,
       z: -2,
-      zPressed: true,
       holding: true,
       midDropAt: 0.4,
       carryT: 5,
@@ -170,7 +207,6 @@ describe('⑥ RESULT → IDLE 복귀 및 리셋', () => {
     }
     const { sim } = stepClaw(resultSim, NONE, DT, cfg)
     expect(sim.phase).toBe('IDLE')
-    expect(sim.zPressed).toBe(false)
     expect(sim.holding).toBe(false)
     expect(sim.midDropAt).toBeNull()
     expect(sim.carryT).toBe(0)

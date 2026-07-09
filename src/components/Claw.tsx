@@ -64,8 +64,8 @@ export default function Claw({ bodyRef, visualRef }: Props) {
         <boxGeometry args={[2.9, 0.06, 0.06]} />
         <meshStandardMaterial color="#8a8f9c" metalness={0.5} roughness={0.4} />
       </mesh>
-      {/* 크로스바 (Z방향 바, x는 클로를 따라감) */}
-      <mesh ref={crossbarRef} position={HOME}>
+      {/* 크로스바 (Z방향 바, x는 클로를 따라감) — Z/Y는 레일 중앙·높이에 고정, X만 useFrame에서 갱신 */}
+      <mesh ref={crossbarRef} position={[HOME[0], RAIL_Y, 0]}>
         <boxGeometry args={[0.06, 0.06, 2.1]} />
         <meshStandardMaterial color="#8a8f9c" metalness={0.5} roughness={0.4} />
       </mesh>

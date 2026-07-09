@@ -87,9 +87,13 @@ export default function ClawStateMachine() {
     const dt = Math.min(rawDt, MAX_DT)
     const prevPhase = simRef.current.phase
 
+    const canStart = prevPhase !== 'IDLE' || creditsRef.current > 0
     const input = {
-      btnX: controlsState.btnX && (prevPhase !== 'IDLE' || creditsRef.current > 0),
-      btnZ: controlsState.btnZ,
+      up: controlsState.up && canStart,
+      down: controlsState.down && canStart,
+      left: controlsState.left && canStart,
+      right: controlsState.right && canStart,
+      drop: controlsState.drop,
     }
 
     const { sim, events } = stepClaw(simRef.current, input, dt, CLAW)
@@ -105,7 +109,7 @@ export default function ClawStateMachine() {
 
     if (sim.phase !== prevPhase) {
       setClawPhase(sim.phase)
-      if (prevPhase === 'IDLE' && sim.phase === 'MOVING_X') spendCredit()
+      if (prevPhase === 'IDLE' && sim.phase === 'MOVING') spendCredit()
       // 결과 토스트(Hud)는 RESULT 동안 wonThisRound를 반응형으로 읽는다 — 다음 라운드를 위해 여기서 정리
       if (prevPhase === 'RESULT' && sim.phase === 'IDLE') clearWonThisRound()
     }

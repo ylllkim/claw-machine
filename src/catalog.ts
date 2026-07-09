@@ -6,10 +6,10 @@
 export type ColorSlot = 'primary' | 'secondary' | 'accent' | 'eye'
 
 export type PartSpec = {
-  shape: 'sphere' | 'capsule'
+  shape: 'sphere' | 'capsule' | 'cone'
   pos: readonly [number, number, number]
   radius: number
-  /** capsule 전용: 원통부 길이 */
+  /** capsule/cone 전용: 원통부 길이(capsule) 또는 높이(cone) */
   length?: number
   scale?: readonly [number, number, number]
   rot?: readonly [number, number, number]
@@ -104,10 +104,10 @@ export const CATALOG: readonly PlushieType[] = [
     parts: [
       { shape: 'capsule', pos: [0, 0.17, 0], radius: 0.14, length: 0.08 }, // 몸통
       { shape: 'sphere', pos: [0, 0.38, 0], radius: 0.13 }, // 머리
-      { shape: 'sphere', pos: [-0.09, 0.5, 0], radius: 0.05, scale: [1, 1.5, 0.6] }, // 뾰족 귀
-      { shape: 'sphere', pos: [0.09, 0.5, 0], radius: 0.05, scale: [1, 1.5, 0.6] },
+      { shape: 'cone', pos: [-0.085, 0.53, 0], radius: 0.045, length: 0.09, rot: [0, 0, 0.15] }, // 뾰족 귀
+      { shape: 'cone', pos: [0.085, 0.53, 0], radius: 0.045, length: 0.09, rot: [0, 0, -0.15] },
       { shape: 'sphere', pos: [0, 0.34, 0.1], radius: 0.05, slot: 'secondary' }, // 주둥이
-      { shape: 'capsule', pos: [0.16, 0.1, -0.08], radius: 0.035, length: 0.16, rot: [0, 0, -0.9] }, // 꼬리
+      { shape: 'capsule', pos: [0, 0.15, -0.16], radius: 0.05, length: 0.1, rot: [0.3, 0, 0] }, // 꼬리(짧고 통통하게)
       { shape: 'sphere', pos: [-0.13, 0.19, 0.03], radius: 0.045 }, // 팔
       { shape: 'sphere', pos: [0.13, 0.19, 0.03], radius: 0.045 },
       ...eyes(0.05, 0.41, 0.11),

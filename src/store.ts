@@ -7,8 +7,7 @@ export type { PlushieInstance } from './logic/layout'
 
 export type ClawPhase =
   | 'IDLE'
-  | 'MOVING_X'
-  | 'MOVING_Z'
+  | 'MOVING'
   | 'DROPPING'
   | 'GRABBING'
   | 'LIFTING'

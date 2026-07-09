@@ -5,8 +5,7 @@
 
 export type ClawPhase =
   | 'IDLE'
-  | 'MOVING_X'
-  | 'MOVING_Z'
+  | 'MOVING'
   | 'DROPPING'
   | 'GRABBING'
   | 'LIFTING'
@@ -48,8 +47,6 @@ export type ClawSim = {
   phaseT: number
   /** 라운드(이동 시작~결과) 경과 시간(s) */
   roundT: number
-  /** MOVING_Z에서 버튼②가 한 번이라도 눌렸는가 */
-  zPressed: boolean
   /** 조인트 부착 여부 — 컴포넌트가 설정(Phase 3) */
   holding: boolean
   /** 운반 진행률 임계값(0~1) — 컴포넌트가 설정(Phase 3) */
@@ -58,7 +55,14 @@ export type ClawSim = {
   carryTotal: number
 }
 
-export type ClawInput = { btnX: boolean; btnZ: boolean }
+/** 방향패드(4방향) + 별도 하강 버튼 — 실제 조이스틱 조작에 대응 */
+export type ClawInput = {
+  up: boolean
+  down: boolean
+  left: boolean
+  right: boolean
+  drop: boolean
+}
 
 export type ClawEvent = { type: 'GRAB_NOW' | 'MID_DROP' | 'RELEASE_NOW' | 'ROUND_END' }
 
@@ -71,7 +75,6 @@ export function initialSim(cfg: ClawCfg): ClawSim {
     closeAmount: 0,
     phaseT: 0,
     roundT: 0,
-    zPressed: false,
     holding: false,
     midDropAt: null,
     carryT: 0,
@@ -111,34 +114,20 @@ export function stepClaw(
       s.y = cfg.home[1]
       s.z = cfg.home[2]
       s.closeAmount = 0
-      if (input.btnX) {
-        s.phase = 'MOVING_X'
+      if (input.up || input.down || input.left || input.right) {
+        s.phase = 'MOVING'
         s.phaseT = 0
         s.roundT = 0
       }
       break
     }
-    case 'MOVING_X': {
+    case 'MOVING': {
       s.roundT += dt
-      if (input.btnX) {
-        s.x = clamp(s.x + cfg.speedX * dt, cfg.bounds.minX, cfg.bounds.maxX)
-      }
-      if (input.btnZ) {
-        s.phase = 'MOVING_Z'
-        s.phaseT = 0
-      } else if (s.roundT > cfg.roundTimeLimit) {
-        s.phase = 'DROPPING'
-        s.phaseT = 0
-      }
-      break
-    }
-    case 'MOVING_Z': {
-      s.roundT += dt
-      if (input.btnZ) {
-        s.z = clamp(s.z - cfg.speedZ * dt, cfg.bounds.minZ, cfg.bounds.maxZ)
-        s.zPressed = true
-      }
-      if (s.zPressed && !input.btnZ) {
+      if (input.right) s.x = clamp(s.x + cfg.speedX * dt, cfg.bounds.minX, cfg.bounds.maxX)
+      if (input.left) s.x = clamp(s.x - cfg.speedX * dt, cfg.bounds.minX, cfg.bounds.maxX)
+      if (input.up) s.z = clamp(s.z - cfg.speedZ * dt, cfg.bounds.minZ, cfg.bounds.maxZ)
+      if (input.down) s.z = clamp(s.z + cfg.speedZ * dt, cfg.bounds.minZ, cfg.bounds.maxZ)
+      if (input.drop) {
         s.phase = 'DROPPING'
         s.phaseT = 0
       } else if (s.roundT > cfg.roundTimeLimit) {
@@ -221,7 +210,6 @@ export function stepClaw(
         s.phase = 'IDLE'
         s.phaseT = 0
         s.roundT = 0
-        s.zPressed = false
         s.holding = false
         s.midDropAt = null
         s.carryT = 0

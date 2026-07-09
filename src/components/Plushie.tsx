@@ -29,8 +29,10 @@ function Part({ part, color, onClick }: PartProps) {
     >
       {part.shape === 'sphere' ? (
         <sphereGeometry args={[part.radius, 20, 14]} />
-      ) : (
+      ) : part.shape === 'capsule' ? (
         <capsuleGeometry args={[part.radius, part.length ?? 0.1, 6, 12]} />
+      ) : (
+        <coneGeometry args={[part.radius, part.length ?? 0.1, 16]} />
       )}
       <meshStandardMaterial color={color} roughness={0.9} />
     </mesh>

@@ -70,7 +70,13 @@ export const CLAW = {
 
 export const GAME = { startCredits: 10, gripStrength: 0.65, dropChance: 0.3 } as const
 
-export const KEYS = { btnX: ['ArrowRight', 'KeyZ'], btnZ: ['ArrowUp', 'KeyX'] } as const
+export const KEYS = {
+  up: ['ArrowUp', 'KeyW'],
+  down: ['ArrowDown', 'KeyS'],
+  left: ['ArrowLeft', 'KeyA'],
+  right: ['ArrowRight', 'KeyD'],
+  drop: ['Space', 'KeyX'],
+} as const
 
 export const STORAGE = { best: 'claw.best', layout: 'claw.layout' } as const
 
