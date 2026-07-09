@@ -131,6 +131,7 @@ const rowStyle: CSSProperties = {
   display: 'flex',
   gap: 8,
   justifyContent: 'center',
+  flexWrap: 'wrap',
 }
 
 const actionButtonStyle: CSSProperties = {

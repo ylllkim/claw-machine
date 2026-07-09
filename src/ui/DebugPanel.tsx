@@ -17,7 +17,7 @@ export default function DebugPanel() {
   const setDrop = useStore((s) => s.setDrop)
 
   return (
-    <div style={panelStyle}>
+    <div className="debug-panel" style={panelStyle}>
       <div style={titleStyle}>디버그</div>
       <label style={rowStyle}>
         <span>그립 강도 {gripStrength.toFixed(2)}</span>

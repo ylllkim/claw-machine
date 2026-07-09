@@ -9,6 +9,17 @@
       html, body, #root { width: 100%; height: 100%; overflow: hidden; }
       body { font-family: system-ui, -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif; background: #1a1a2e; }
       canvas { touch-action: none; }
+
+      /* 좁은 화면(모바일)에서 디버그 패널이 상단 안내 문구와 겹치지 않게 축소·재배치 */
+      @media (max-width: 480px) {
+        .debug-panel {
+          top: auto !important;
+          bottom: 140px !important;
+          right: 8px !important;
+          width: 150px !important;
+          font-size: 11px !important;
+        }
+      }
     </style>
   </head>
   <body>
