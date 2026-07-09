@@ -44,7 +44,11 @@ export default function Plushie({ instance }: { instance: PlushieInstance }) {
   const primary = type.palette[instance.colorIndex % type.palette.length]
   const bodyRef = useRef<RapierRigidBody>(null)
   // 리렌더(예: 다른 인형 추가/제거로 배열 참조가 바뀔 때)마다 회전이 리셋되지 않도록 마운트 시 1회만 계산
-  const initialYaw = useMemo(() => Math.random() * Math.PI * 2, [])
+  // 3축 모두 랜덤 — 전부 세운 채로 떨어지는 대신 제각각 기울어진 채로 낙하
+  const initialRotation = useMemo<[number, number, number]>(
+    () => [Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2],
+    [],
+  )
   const massPerCollider = type.mass / type.colliders.length
 
   const mode = useStore((s) => s.mode)
@@ -66,7 +70,7 @@ export default function Plushie({ instance }: { instance: PlushieInstance }) {
       ref={bodyRef}
       colliders={false}
       position={[...instance.pos]}
-      {...(instance.quat ? { quaternion: [...instance.quat] } : { rotation: [0, initialYaw, 0] })}
+      {...(instance.quat ? { quaternion: [...instance.quat] } : { rotation: initialRotation })}
       linearDamping={PRIZES.linearDamping}
       angularDamping={PRIZES.angularDamping}
       canSleep

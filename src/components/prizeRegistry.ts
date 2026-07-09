@@ -21,3 +21,8 @@ export function getPrizeBody(uid: string): RapierRigidBody | undefined {
 export function allPrizeBodies(): ReadonlyMap<string, RapierRigidBody> {
   return registry
 }
+
+// 개발 중 자동화/콘솔 디버깅용 (프로덕션 빌드에서는 제외됨)
+if (import.meta.env.DEV) {
+  ;(globalThis as Record<string, unknown>).__prizeBodies = registry
+}
