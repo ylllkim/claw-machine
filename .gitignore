@@ -1,0 +1,23 @@
+# 의존성 — package-lock.json으로 재설치 가능
+node_modules/
+
+# 빌드 산출물 — npm run build로 재생성
+dist/
+tsconfig.tsbuildinfo
+
+# 에디터/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 환경 변수 (현재 프로젝트엔 없지만 향후 실수 방지용)
+.env
+.env.local
+.env.*.local
+
+# Claude Code 로컬 상태 — 개인 세션 정보, 리포지토리 대상 아님
+.claude/
+
+# 출처가 불명확한 참고 이미지 — 라이선스 무위험 원칙(SPEC.md) 때문에 리포에 포함하지 않음
+claw.png
