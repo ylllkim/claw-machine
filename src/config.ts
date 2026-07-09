@@ -37,7 +37,7 @@ export const PRIZES = {
   linearDamping: 0.5,
   angularDamping: 1.5,
   friction: 0.8,
-  restitution: 0.05,
+  restitution: 0,
 } as const
 
 /** 콜라이더 와이어프레임 표시 (개발용) */
