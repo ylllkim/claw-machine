@@ -38,6 +38,10 @@ export const PRIZES = {
   angularDamping: 1.5,
   friction: 0.8,
   restitution: 0,
+  // 쌓여 겹쳐있던 인형을 조인트로 뽑아낼 때 솔버가 겹침을 한꺼번에 풀며 폭발적인 속도를 낼 수 있음 —
+  // 매 프레임 이 상한을 넘으면 깎아서 "날아가는" 현상을 방지 (정상 플레이 속도는 훨씬 낮음)
+  maxLinvel: 4,
+  maxAngvel: 10,
 } as const
 
 /** 콜라이더 와이어프레임 표시 (개발용) */
@@ -63,6 +67,7 @@ export const CLAW = {
   grabRadius: 0.45, // 손바닥 기준 후보 탐색 반경
   grabAnchorLocal: [0, 0.4, 0] as const, // 인형 로컬 부착점(머리 근처 → 달랑거림)
   candidateCenterY: 0.25, // 후보 대표점: 바디 translation + y 보정(인형 몸통 중심 근사)
+  holdAngularDamping: 6, // 운반 중 인형 회전 억제(스페리컬 조인트는 회전에 무저항이라 별도 필요) — released 시 PRIZES.angularDamping로 복원
   settleTime: 1.4,
   resultTime: 2.2, // 릴리스 후 안착 대기 / 결과 표시(s)
   roundTimeLimit: 20, // 라운드 시작 후 초과 시 자동 하강(s)

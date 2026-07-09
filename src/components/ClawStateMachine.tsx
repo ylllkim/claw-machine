@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useRapier, type RapierRigidBody } from '@react-three/rapier'
 import type { ImpulseJoint } from '@dimforge/rapier3d-compat'
-import { CLAW } from '../config'
+import { CLAW, PRIZES } from '../config'
 import { useStore } from '../store'
 import { controlsState } from '../hooks/useControls'
 import { initialSim, stepClaw, type ClawSim } from '../logic/stateMachine'
@@ -16,6 +16,7 @@ export default function ClawStateMachine() {
   const bodyRef = useRef<RapierRigidBody>(null)
   const simRef = useRef<ClawSim>(initialSim(CLAW))
   const jointRef = useRef<ImpulseJoint | null>(null)
+  const heldBodyRef = useRef<RapierRigidBody | null>(null)
   const visualRef = useRef<ClawVisual>({
     close: 0,
     x: CLAW.home[0],
@@ -64,11 +65,14 @@ export default function ClawStateMachine() {
     const prizeBody = allPrizeBodies().get(uid)
     if (!prizeBody) return
     prizeBody.wakeUp()
+    prizeBody.setAngvel({ x: 0, y: 0, z: 0 }, true)
+    prizeBody.setAngularDamping(CLAW.holdAngularDamping)
     const params = rapier.JointData.spherical(
       { x: 0, y: CLAW.palmOffsetY, z: 0 },
       { x: CLAW.grabAnchorLocal[0], y: CLAW.grabAnchorLocal[1], z: CLAW.grabAnchorLocal[2] },
     )
     jointRef.current = world.createImpulseJoint(params, clawBody, prizeBody, true)
+    heldBodyRef.current = prizeBody
     sim.holding = true
     sim.midDropAt = rollMidDrop(Math.random, dropRef.current)
   }
@@ -78,6 +82,10 @@ export default function ClawStateMachine() {
     if (jointRef.current) {
       world.removeImpulseJoint(jointRef.current, true)
       jointRef.current = null
+    }
+    if (heldBodyRef.current) {
+      heldBodyRef.current.setAngularDamping(PRIZES.angularDamping)
+      heldBodyRef.current = null
     }
     sim.holding = false
   }
